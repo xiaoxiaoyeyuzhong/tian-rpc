@@ -1,5 +1,7 @@
 package com.fdt.provider;
 
+import com.fdt.common.service.UserService;
+import com.fdt.tianrpc.registry.LocalRegistry;
 import com.fdt.tianrpc.server.HttpServer;
 import com.fdt.tianrpc.server.VertxHttpServer;
 import io.vertx.core.Vertx;
@@ -10,7 +12,9 @@ import io.vertx.core.Vertx;
  */
 public class EasyProviderExample {
     public static void main(String[] args) {
-       // todo 提供服务
+       // 注册服务
+        LocalRegistry.register(UserService.class.getName(),UserServiceImpl.class);
+
         // 启动web服务
         HttpServer httpServer = new VertxHttpServer();
         httpServer.doStart(8080);

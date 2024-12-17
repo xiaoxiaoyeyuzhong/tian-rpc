@@ -3,6 +3,8 @@ package com.fdt.tianrpc.server;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Vertx;
 
+import static java.lang.System.*;
+
 public class VertxHttpServer extends AbstractVerticle implements HttpServer {
 
     //    private final int port;
@@ -18,22 +20,15 @@ public class VertxHttpServer extends AbstractVerticle implements HttpServer {
         // 创建HTTP服务器
         io.vertx.core.http.HttpServer server = vertx.createHttpServer();
 
-        // 处理请求
-        server.requestHandler(request -> {
-            System.out.println("Received request" +
-                    "method = " + request.method() + " " +
-                    "uri = " + request.uri());
+        // 监听指定端口并处理请求
+        server.requestHandler(new HttpServerHandler());
 
-            request.response()
-                    .putHeader("Content-Type", "text/plain")
-                    .end("Hello from Vert.x HTTP server");
-        });
-        // 启动HTTP服务器，监听指定的端口
+        // 启动HTTP服务器，开始监听指定的端口
         server.listen(port, result -> {
             if (result.succeeded()) {
-                System.out.println("HTTP server started on port " + port);
+                out.println("HTTP server started on port " + port);
             } else {
-                System.out.println("Failed to start HTTP server");
+                out.println("Failed to start HTTP server");
             }
         });
 
