@@ -2,6 +2,7 @@ package com.fdt.consumer;
 
 import com.fdt.common.model.User;
 import com.fdt.common.service.UserService;
+import com.fdt.tianrpc.proxy.ServiceProxyFactory;
 
 /**
  * @author fdt
@@ -11,11 +12,14 @@ public class EasyConsumerExample {
 
     public static void main(String[] args)
     {
-       // todo 获取UserService的实现类对象
-        UserService userService = null;
+       // 获取UserService的实现类对象
+        // 通过静态代理获取方法实现类
+//        UserService userService = new UserServiceProxy();
+        // 通过动态代理获取方法实现类
+        UserService userService = ServiceProxyFactory.getProxy(UserService.class);
         User user = new User();
         user.setName("fdt");
-        // todo 调用UserService的getUser方法
+        // 调用UserService的getUser方法
         User newUser = userService.getUser(user);
         if(newUser != null){
             System.out.println("用户名：" + newUser.getName());
