@@ -10,10 +10,11 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.fdt</groupId>
-    <artifactId>example-provider</artifactId>
+    <artifactId>tian-rpc-core</artifactId>
     <packaging>jar</packaging>
     <version>0.0.1-SNAPSHOT</version>
-    <name>example-provider</name>
+    <name>tian-rpc-core</name>
+
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -34,15 +35,9 @@
         </dependency>
 
         <dependency>
-            <groupId>com.fdt</groupId>
-            <artifactId>example-common</artifactId>
-            <version>0.0.1-SNAPSHOT</version>
-        </dependency>
-
-        <dependency>
-            <groupId>com.fdt</groupId>
-            <artifactId>tian-rpc-core</artifactId>
-            <version>0.0.1-SNAPSHOT</version>
+            <groupId>io.vertx</groupId>
+            <artifactId>vertx-core</artifactId>
+            <version>4.5.1</version>
         </dependency>
 
         <!--https://hutool.cn/docs/#/ 网络请求发送工具包-->
@@ -59,6 +54,19 @@
             <optional>true</optional>
             <!--编译可用，运行时外部提供-->
             <scope>provided</scope>
+        </dependency>
+
+        <!-- https://mvnrepository.com/artifact/ch.qos.logback/logback-classic -->
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>RELEASE</version>
+            <scope>test</scope>
         </dependency>
 
     </dependencies>

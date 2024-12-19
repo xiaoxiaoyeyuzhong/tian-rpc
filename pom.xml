@@ -8,6 +8,7 @@
         <module>example-consumer</module>
         <module>example-provider</module>
         <module>tian-rpc-easy</module>
+        <module>tian-rpc-core</module>
     </modules>
     <parent>
         <groupId>org.springframework.boot</groupId>
