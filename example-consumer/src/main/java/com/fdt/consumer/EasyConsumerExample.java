@@ -14,9 +14,7 @@ public class EasyConsumerExample {
     {
        // 获取UserService的实现类对象
         // 通过静态代理获取方法实现类
-//        UserService userService = new UserServiceProxy();
-        // 通过动态代理获取方法实现类
-        UserService userService = ServiceProxyFactory.getProxy(UserService.class);
+        UserService userService = new UserServiceProxy();
         User user = new User();
         user.setName("fdt");
         // 调用UserService的getUser方法

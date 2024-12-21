@@ -11,4 +11,9 @@ public class UserServiceImpl implements UserService {
         System.out.println("用户名称" + user.getName());
         return user;
     }
+
+    @Override
+    public int getNumber() {
+        return 1;
+    }
 }

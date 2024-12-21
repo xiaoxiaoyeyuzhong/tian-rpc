@@ -47,4 +47,9 @@ public class UserServiceProxy implements UserService {
         }
         return null;
     }
+
+    @Override
+    public int getNumber() {
+        return 0;
+    }
 }

@@ -5,7 +5,6 @@ import com.fdt.common.service.UserService;
 import com.fdt.tianrpc.registry.LocalRegistry;
 import com.fdt.tianrpc.server.HttpServer;
 import com.fdt.tianrpc.server.VertxHttpServer;
-import io.vertx.core.Vertx;
 
 /**
  * @author fdt
