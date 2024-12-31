@@ -1,14 +1,17 @@
 package com.fdt.tianrpc.server;
 
+import com.fdt.RpcApplication;
 import com.fdt.tianrpc.model.RpcRequest;
 import com.fdt.tianrpc.model.RpcResponse;
 import com.fdt.tianrpc.registry.LocalRegistry;
 import com.fdt.tianrpc.serializer.JdkSerializer;
 import com.fdt.tianrpc.serializer.Serializer;
+import com.fdt.tianrpc.serializer.SerializerFactory;
 import io.vertx.core.Handler;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.http.HttpServerResponse;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
 import java.lang.reflect.Constructor;
@@ -17,6 +20,7 @@ import java.lang.reflect.Method;
 /**
  * http请求处理
  */
+@Slf4j
 public class HttpServerHandler implements Handler<HttpServerRequest> {
 
     /**
@@ -27,8 +31,8 @@ public class HttpServerHandler implements Handler<HttpServerRequest> {
     public void handle(HttpServerRequest request) {
 
         // 指定序列化器
-        final Serializer serializer = new JdkSerializer();
-
+        final Serializer serializer = SerializerFactory.getInstance(RpcApplication.getRpcConfig().getSerializer());
+        log.debug(String.format("http请求处理使用%s序列化器",serializer.toString()));
         //记录日志
         System.out.println("Received request" +
                 "method = " + request.method() + " " +

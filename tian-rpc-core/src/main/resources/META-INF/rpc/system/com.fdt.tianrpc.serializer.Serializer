@@ -1,0 +1,2 @@
+jdk=com.fdt.tianrpc.serializer.JdkSerializer
+json=com.fdt.tianrpc.serializer.JsonSerializer

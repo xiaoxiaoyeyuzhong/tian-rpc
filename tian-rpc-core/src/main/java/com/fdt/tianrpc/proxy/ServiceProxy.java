@@ -2,23 +2,27 @@ package com.fdt.tianrpc.proxy;
 
 import cn.hutool.http.HttpRequest;
 import cn.hutool.http.HttpResponse;
+import com.fdt.RpcApplication;
 import com.fdt.tianrpc.model.RpcRequest;
 import com.fdt.tianrpc.model.RpcResponse;
-import com.fdt.tianrpc.serializer.JdkSerializer;
 import com.fdt.tianrpc.serializer.Serializer;
+import com.fdt.tianrpc.serializer.SerializerFactory;
+import lombok.extern.slf4j.Slf4j;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 
 /**
- * JDK动态代理
+ * 动态代理
  */
+@Slf4j
 public class ServiceProxy implements InvocationHandler {
     // 当调用代理对象的方法时，会转为调用invoke方法
     @Override
     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
         // 指定序列化器
-        Serializer serializer = new JdkSerializer();
+        Serializer serializer = SerializerFactory.getInstance(RpcApplication.getRpcConfig().getSerializer());
+        log.debug(String.format("动态代理使用%s序列化器",serializer.toString()));
         // 构建请求
         RpcRequest rpcRequest = RpcRequest.builder()
                 .serviceName(method.getDeclaringClass().getName())

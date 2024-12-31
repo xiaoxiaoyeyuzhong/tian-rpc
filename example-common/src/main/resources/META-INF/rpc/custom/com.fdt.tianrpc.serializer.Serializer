@@ -1,0 +1,2 @@
+hessian=com.fdt.common.serializer.HessianSerializer
+kryo=com.fdt.tianrpc.serializer.KryoSerializer

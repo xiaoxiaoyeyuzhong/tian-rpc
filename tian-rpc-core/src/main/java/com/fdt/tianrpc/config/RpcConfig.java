@@ -1,5 +1,6 @@
 package com.fdt.tianrpc.config;
 
+import com.fdt.tianrpc.serializer.SerializerKeys;
 import lombok.Data;
 
 /**
@@ -32,5 +33,10 @@ public class RpcConfig {
      * Mock 开关，默认关闭(Mock，模拟调用)
      */
     private boolean mock = false;
+
+    /**
+     * 序列化器
+     */
+    private String serializer = SerializerKeys.JDK;
 
 }

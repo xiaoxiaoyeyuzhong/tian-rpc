@@ -1,0 +1,4 @@
+jdk=com.fdt.tianrpc.serializer.JdkSerializer
+json=com.fdt.tianrpc.serializer.JsonSerializer
+hessian=com.fdt.tianrpc.serializer.HessianSerializer
+kryo=com.fdt.tianrpc.serializer.KryoSerializer
