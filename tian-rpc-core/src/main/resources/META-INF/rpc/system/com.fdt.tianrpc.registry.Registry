@@ -1,0 +1,1 @@
+etcd=com.fdt.tianrpc.registry.EtcdRegistry

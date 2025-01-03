@@ -1,7 +1,10 @@
 package com.fdt;
 
+import com.fdt.tianrpc.config.RegistryConfig;
 import com.fdt.tianrpc.config.RpcConfig;
 import com.fdt.tianrpc.constant.RpcConstant;
+import com.fdt.tianrpc.registry.Registry;
+import com.fdt.tianrpc.registry.RegistryFactory;
 import com.fdt.tianrpc.utils.ConfigUtils;
 import lombok.extern.slf4j.Slf4j;
 
@@ -23,6 +26,13 @@ public class RpcApplication {
     public static void init(RpcConfig newRpcConfig){
         rpcConfig = newRpcConfig;
         log.info("rpc init,config = {}",newRpcConfig.toString());
+
+        // 注册中心初始化
+        RegistryConfig registryConfig = rpcConfig.getRegistryConfig();
+        Registry registry = RegistryFactory.getInstance(registryConfig.getRegistry());
+        registry.init(registryConfig);
+        log.info("registry init,registry = {}",registryConfig.getRegistry());
+
     }
 
     /**

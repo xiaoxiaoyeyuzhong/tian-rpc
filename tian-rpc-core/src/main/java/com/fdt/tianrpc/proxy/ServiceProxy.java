@@ -1,16 +1,23 @@
 package com.fdt.tianrpc.proxy;
 
+import cn.hutool.core.collection.CollUtil;
 import cn.hutool.http.HttpRequest;
 import cn.hutool.http.HttpResponse;
 import com.fdt.RpcApplication;
+import com.fdt.tianrpc.config.RpcConfig;
+import com.fdt.tianrpc.constant.RpcConstant;
 import com.fdt.tianrpc.model.RpcRequest;
 import com.fdt.tianrpc.model.RpcResponse;
+import com.fdt.tianrpc.model.ServiceMetaInfo;
+import com.fdt.tianrpc.registry.Registry;
+import com.fdt.tianrpc.registry.RegistryFactory;
 import com.fdt.tianrpc.serializer.Serializer;
 import com.fdt.tianrpc.serializer.SerializerFactory;
 import lombok.extern.slf4j.Slf4j;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
+import java.util.List;
 
 /**
  * 动态代理
@@ -24,6 +31,7 @@ public class ServiceProxy implements InvocationHandler {
         Serializer serializer = SerializerFactory.getInstance(RpcApplication.getRpcConfig().getSerializer());
         log.debug(String.format("动态代理使用%s序列化器",serializer.toString()));
         // 构建请求
+        String serviceName = method.getDeclaringClass().getName();
         RpcRequest rpcRequest = RpcRequest.builder()
                 .serviceName(method.getDeclaringClass().getName())
                 .methodName(method.getName())
@@ -34,8 +42,22 @@ public class ServiceProxy implements InvocationHandler {
         // 序列化请求，发送请求
         try{
             byte[] bodyBytes = serializer.serialize(rpcRequest);
-            // todo 使用注册中心和服务发现机制，获取服务地址
-            try(HttpResponse httpResponse = HttpRequest.post("http://localhost:8080")
+            // 从注册中心获取服务地址
+            RpcConfig rpcConfig = RpcApplication.getRpcConfig();
+            Registry registry = RegistryFactory.getInstance(rpcConfig.getRegistryConfig().getRegistry());
+            ServiceMetaInfo serviceMetaInfo = new ServiceMetaInfo();
+            serviceMetaInfo.setServiceName(serviceName);
+            // todo 服务版本现在使用的是默认值,应该从配置文件中获取
+            serviceMetaInfo.setServiceVersion(RpcConstant.DEFAULT_SERVICE_VERSION);
+            List<ServiceMetaInfo> serviceMetaInfoList = registry.serviceDiscovery(serviceMetaInfo.getServiceKey());
+            if(CollUtil.isEmpty(serviceMetaInfoList)){
+                throw new RuntimeException("未发现服务");
+            }
+            // todo 现在直接取了第一个服务地址，后续需要负载均衡
+            ServiceMetaInfo selectedServiceMetaInfo = serviceMetaInfoList.get(0);
+
+            // 发送请求
+            try(HttpResponse httpResponse = HttpRequest.post(selectedServiceMetaInfo.getServiceAddress())
                         .body(bodyBytes)
                         .execute()){
                 byte[] result = httpResponse.bodyBytes();
