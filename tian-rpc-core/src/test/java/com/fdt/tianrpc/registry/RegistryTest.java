@@ -17,7 +17,11 @@ public class RegistryTest {
     public void init() {
         RegistryConfig registryConfig = new RegistryConfig();
         registryConfig.setAddress("http://localhost:2379");
-        registry.init(registryConfig);
+        try {
+            registry.init(registryConfig);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Test

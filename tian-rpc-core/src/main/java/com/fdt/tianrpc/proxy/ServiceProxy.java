@@ -45,6 +45,7 @@ public class ServiceProxy implements InvocationHandler {
             // 从注册中心获取服务地址
             RpcConfig rpcConfig = RpcApplication.getRpcConfig();
             Registry registry = RegistryFactory.getInstance(rpcConfig.getRegistryConfig().getRegistry());
+            System.out.println("消费者使用的注册中心 " + registry.toString());
             ServiceMetaInfo serviceMetaInfo = new ServiceMetaInfo();
             serviceMetaInfo.setServiceName(serviceName);
             // todo 服务版本现在使用的是默认值,应该从配置文件中获取

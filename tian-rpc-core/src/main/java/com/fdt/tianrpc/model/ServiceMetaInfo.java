@@ -1,6 +1,7 @@
 package com.fdt.tianrpc.model;
 
 import cn.hutool.core.util.StrUtil;
+import com.fdt.tianrpc.constant.RpcConstant;
 import lombok.Data;
 
 /**
@@ -17,7 +18,7 @@ public class ServiceMetaInfo {
     /**
      * 服务版本
      */
-    private String serviceVersion;
+    private String serviceVersion = RpcConstant.DEFAULT_SERVICE_VERSION;
 
     /**
      * 服务域名

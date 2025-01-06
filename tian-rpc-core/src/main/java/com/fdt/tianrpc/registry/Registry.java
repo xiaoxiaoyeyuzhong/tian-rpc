@@ -12,7 +12,7 @@ public interface Registry {
      * 初始化
      * @param registryConfig 注册中心配置
      */
-    void init(RegistryConfig registryConfig);
+    void init(RegistryConfig registryConfig) throws Exception;
 
     /**
      * 服务注册(提供者)

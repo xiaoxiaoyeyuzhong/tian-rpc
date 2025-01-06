@@ -30,7 +30,11 @@ public class RpcApplication {
         // 注册中心初始化
         RegistryConfig registryConfig = rpcConfig.getRegistryConfig();
         Registry registry = RegistryFactory.getInstance(registryConfig.getRegistry());
-        registry.init(registryConfig);
+        try {
+            registry.init(registryConfig);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
         log.info("registry init,registry = {}",registryConfig.getRegistry());
 
     }

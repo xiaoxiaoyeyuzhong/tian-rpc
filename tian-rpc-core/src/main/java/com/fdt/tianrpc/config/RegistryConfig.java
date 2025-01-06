@@ -1,5 +1,6 @@
 package com.fdt.tianrpc.config;
 
+import cn.hutool.core.util.StrUtil;
 import lombok.Data;
 
 @Data
@@ -29,4 +30,16 @@ public class RegistryConfig {
      * 超时时间（单位毫秒）
      */
     private Long timeout = 10000L;
+
+    /**
+     * 获取完整服务地址，因为地址前缀可能会被忽略不写
+     */
+
+    public String getAddress(){
+        if(!StrUtil.contains(address, "http")){
+            return String.format("http://%s",address);
+        }
+        return String.format("%s",address);
+    }
+
 }

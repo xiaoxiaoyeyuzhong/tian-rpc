@@ -2032,6 +2032,21 @@ public class SerializerFactory {
 
 1. 测试注册中心的unRegister()方法的时候，发现无法注销服务，看教程评论区，有人说是unRegister()方法内使用的delete最后没加get(),由于etcd是异步操作的，方法不会等待删除完成，而是返回了CompletableFuture对象，然后测试方法执行到末尾，接着可能是调用了EtcdRegistry的destroy方法，销毁了连接注册中心的客户端，导致注销失败。
 2. 测试服务发现的时候，使用了断言，但是教程使用的是Assert.assertNotNull(serviceMetaInfoList);，即使没有发现服务也返回true，而使用Assert.assertFalse(serviceMetaInfoList.isEmpty())就正常了，因为方法返回的时候会创建一个新的List，不会返回null。
+3. git提交问题
+   1. 在项目里放了一个笔记文件，md结尾，结果点击提交没用，点击提交那里的小零件（设置），不勾选分析代码，就没问题
+   2. git提交的注释最好简短，且不要写两个字就换行，在GitHub上，第一眼只能看到第一行
+4. 注册中心基础版完整测试问题
+   1. 找不到服务
+      1. 第一眼以为是服务租约太短，还未启动消费者，租约就结束了，导致找不到，但是快速测试一遍发现还是找不到。
+      2. 使用etcdkepper查看注册的服务，发现有一个null，回看注册的时候设置的键，发现是服务版本为空；原来是消费者使用服务发现的时候，用默认的版本进行发现，但是提供者进行服务注册的时候没有提供服务版本，导致找不到服务，所以给ServiceMetaInfo加上版本常量（后面 再改进），注册的时候不填版本就有了默认的版本号，消费者同理。
+
+   2. 修改注册中心配置的address
+      1. 预期的错误是因为地址更改注册中心客户端初始化会失败，但是实际的问题是address不写前缀，如**http://**的话，就无法解析这个地址了。
+
+   3. 修改注册中心的地址配置
+      1. 预期是会因为地址错误而无法注册和服务发现等，但是实际上程序一直在等待，询问chat后，意识到可能是get()直接阻塞了程序运行，而我没有给它设置超时时间，这就导致了阻塞没有时限，程序卡死了，给get()加了5秒超时时间后，地址错误就会报错了。
+
+
 
 ### 5.4.5 基本实现
 
@@ -2373,6 +2388,252 @@ public class RegistryFactory {
 
 ```
 etcd=com.fdt.tianrpc.registry.EtcdRegistry
+```
+
+
+
+#### 5.4.5.3 注册中心基础版基本测试
+
+> ServiceProxy.java
+
+```java
+package com.fdt.tianrpc.proxy;
+
+import cn.hutool.core.collection.CollUtil;
+import cn.hutool.http.HttpRequest;
+import cn.hutool.http.HttpResponse;
+import com.fdt.RpcApplication;
+import com.fdt.tianrpc.config.RpcConfig;
+import com.fdt.tianrpc.constant.RpcConstant;
+import com.fdt.tianrpc.model.RpcRequest;
+import com.fdt.tianrpc.model.RpcResponse;
+import com.fdt.tianrpc.model.ServiceMetaInfo;
+import com.fdt.tianrpc.registry.Registry;
+import com.fdt.tianrpc.registry.RegistryFactory;
+import com.fdt.tianrpc.serializer.Serializer;
+import com.fdt.tianrpc.serializer.SerializerFactory;
+import lombok.extern.slf4j.Slf4j;
+
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Method;
+import java.util.List;
+
+/**
+ * 动态代理
+ */
+@Slf4j
+public class ServiceProxy implements InvocationHandler {
+    // 当调用代理对象的方法时，会转为调用invoke方法
+    @Override
+    public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+        // 指定序列化器
+        Serializer serializer = SerializerFactory.getInstance(RpcApplication.getRpcConfig().getSerializer());
+        log.debug(String.format("动态代理使用%s序列化器",serializer.toString()));
+        // 构建请求
+        String serviceName = method.getDeclaringClass().getName();
+        RpcRequest rpcRequest = RpcRequest.builder()
+                .serviceName(method.getDeclaringClass().getName())
+                .methodName(method.getName())
+                .parameterTypes(method.getParameterTypes())
+                .args(args)
+                .build();
+
+        // 序列化请求，发送请求
+        try{
+            byte[] bodyBytes = serializer.serialize(rpcRequest);
+            // 从注册中心获取服务地址
+            RpcConfig rpcConfig = RpcApplication.getRpcConfig();
+            Registry registry = RegistryFactory.getInstance(rpcConfig.getRegistryConfig().getRegistry());
+            ServiceMetaInfo serviceMetaInfo = new ServiceMetaInfo();
+            serviceMetaInfo.setServiceName(serviceName);
+            // todo 服务版本现在使用的是默认值,应该从配置文件中获取
+            serviceMetaInfo.setServiceVersion(RpcConstant.DEFAULT_SERVICE_VERSION);
+            List<ServiceMetaInfo> serviceMetaInfoList = registry.serviceDiscovery(serviceMetaInfo.getServiceKey());
+            if(CollUtil.isEmpty(serviceMetaInfoList)){
+                throw new RuntimeException("未发现服务");
+            }
+            // todo 现在直接取了第一个服务地址，后续需要负载均衡
+            ServiceMetaInfo selectedServiceMetaInfo = serviceMetaInfoList.get(0);
+
+            // 发送请求
+            try(HttpResponse httpResponse = HttpRequest.post(selectedServiceMetaInfo.getServiceAddress())
+                        .body(bodyBytes)
+                        .execute()){
+                byte[] result = httpResponse.bodyBytes();
+                // 反序列化响应结果
+                RpcResponse rpcResponse = serializer.deserialize(result, RpcResponse.class);
+                // 将结果转换成User类实例，返回结果
+                return rpcResponse.getData();
+            } catch (Exception e){
+                e.printStackTrace();
+            }
+        }catch(Exception e){
+            e.printStackTrace();
+        }
+        return null;
+    }
+}
+
+```
+
+> RegistryTest.java
+
+```java
+package com.fdt.tianrpc.registry;
+
+import com.fdt.tianrpc.config.RegistryConfig;
+import com.fdt.tianrpc.model.ServiceMetaInfo;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+
+import java.util.List;
+import java.util.concurrent.ExecutionException;
+
+public class RegistryTest {
+
+    final Registry registry = new EtcdRegistry();
+
+    @Before
+    public void init() {
+        RegistryConfig registryConfig = new RegistryConfig();
+        registryConfig.setAddress("http://localhost:2379");
+        registry.init(registryConfig);
+    }
+
+    @Test
+    public void register() throws Exception {
+        ServiceMetaInfo serviceMetaInfo = new ServiceMetaInfo();
+        // 模拟服务提供者注册服务信息
+
+        // 服务1
+        serviceMetaInfo.setServiceName("fdtService");
+        serviceMetaInfo.setServiceVersion("1.0.0");
+        serviceMetaInfo.setServiceHost("localhost");
+        serviceMetaInfo.setServicePort(1234);
+        registry.register(serviceMetaInfo);
+
+        serviceMetaInfo = new ServiceMetaInfo();
+        //服务2
+        serviceMetaInfo.setServiceName("myService");
+        serviceMetaInfo.setServiceVersion("1.0.0");
+        serviceMetaInfo.setServiceHost("localhost");
+        serviceMetaInfo.setServicePort(1235);
+        registry.register(serviceMetaInfo);
+
+        serviceMetaInfo = new ServiceMetaInfo();
+        //服务1的2.0版本
+        serviceMetaInfo.setServiceName("fdtService");
+        serviceMetaInfo.setServiceVersion("2.0.0");
+        serviceMetaInfo.setServiceHost("localhost");
+        serviceMetaInfo.setServicePort(1236);
+        registry.register(serviceMetaInfo);
+    }
+
+    @Test
+    public void unRegister() throws ExecutionException, InterruptedException {
+        ServiceMetaInfo serviceMetaInfo = new ServiceMetaInfo();
+        serviceMetaInfo.setServiceName("fdtService");
+        serviceMetaInfo.setServiceVersion("1.0.0");
+        serviceMetaInfo.setServiceHost("localhost");
+        serviceMetaInfo.setServicePort(1234);
+        // 注销服务，记得kvClient.delete要加入get()，否则删除还未完成就结束了
+        registry.unRegister(serviceMetaInfo);
+    }
+
+    @Test
+    public void serviceDiscovery() {
+        ServiceMetaInfo serviceMetaInfo = new ServiceMetaInfo();
+        serviceMetaInfo.setServiceName("fdtService");
+        serviceMetaInfo.setServiceVersion("1.0.0");
+        String serviceKey = serviceMetaInfo.getServiceKey();
+        List<ServiceMetaInfo> serviceMetaInfoList = registry.serviceDiscovery(serviceKey);
+        Assert.assertFalse(serviceMetaInfoList.isEmpty());
+    }
+
+
+}
+
+```
+
+#### 5.4.5.4 注册中心基础版完整测试
+
+> ProviderExample
+
+```java
+package com.fdt.provider;
+
+import com.fdt.RpcApplication;
+import com.fdt.common.service.UserService;
+import com.fdt.tianrpc.config.RegistryConfig;
+import com.fdt.tianrpc.config.RpcConfig;
+import com.fdt.tianrpc.model.ServiceMetaInfo;
+import com.fdt.tianrpc.registry.LocalRegistry;
+import com.fdt.tianrpc.registry.Registry;
+import com.fdt.tianrpc.registry.RegistryFactory;
+import com.fdt.tianrpc.server.HttpServer;
+import com.fdt.tianrpc.server.VertxHttpServer;
+
+public class ProviderExample {
+    public static void main(String[] args) {
+        // RPC框架初始化
+        RpcApplication.init();
+
+        // 本地服务注册
+        String serviceName = UserService.class.getName();
+        LocalRegistry.register(serviceName, UserServiceImpl.class);
+
+        //注册服务到注册中心
+        RpcConfig rpcConfig = RpcApplication.getRpcConfig();
+        RegistryConfig registryConfig = rpcConfig.getRegistryConfig();
+        Registry registry = RegistryFactory.getInstance(registryConfig.getRegistry());
+        ServiceMetaInfo serviceMetaInfo = new ServiceMetaInfo();
+        serviceMetaInfo.setServiceName(serviceName);
+        serviceMetaInfo.setServiceHost(rpcConfig.getServerHost());
+        serviceMetaInfo.setServicePort(rpcConfig.getServerPort());
+
+        try{
+            registry.register(serviceMetaInfo);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
+        // web服务启动
+        HttpServer httpServer = new VertxHttpServer();
+        httpServer.doStart(rpcConfig.getServerPort());
+    }
+}
+
+```
+
+> application.properties
+
+```properties
+tian-rpc.registryConfig.username=fengdetian
+tian-rpc.registryConfig.password=who
+```
+
+>EtcdRegistry.java
+
+```java
+   // 添加超时报错逻辑，当超时后仍然无法连接到注册中心时，抛出错误
+   public void init(RegistryConfig registryConfig) {
+
+            client = Client.builder().endpoints(registryConfig.getAddress())
+                    .connectTimeout(Duration.ofMillis(registryConfig.getTimeout()))
+                    .build();
+            kvClient = client.getKVClient();
+
+        try {
+            ByteSequence rootPath = ByteSequence.from(ETCD_ROOT_PATH, StandardCharsets.UTF_8);
+            GetResponse response = client.getKVClient().get(rootPath).get(5, TimeUnit.SECONDS);  // 设置超时为5秒
+            String kv = String.valueOf(response.getKvs());
+            System.out.println("获取根路径的内容:kv= " + kv);
+        } catch (Exception e) {
+            throw new RuntimeException("Etcd注册中心连接失败", e);
+        }
+
+    }
 ```
 
 

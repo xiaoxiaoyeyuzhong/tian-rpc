@@ -3,8 +3,8 @@ package com.fdt.tianrpc.registry;
 import cn.hutool.json.JSONUtil;
 import com.fdt.tianrpc.config.RegistryConfig;
 import com.fdt.tianrpc.model.ServiceMetaInfo;
-import com.google.protobuf.ByteString;
 import io.etcd.jetcd.*;
+import io.etcd.jetcd.kv.GetResponse;
 import io.etcd.jetcd.options.GetOption;
 import io.etcd.jetcd.options.PutOption;
 
@@ -12,6 +12,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 public class EtcdRegistry implements Registry{
@@ -26,10 +27,21 @@ public class EtcdRegistry implements Registry{
 
     @Override
     public void init(RegistryConfig registryConfig) {
-        client = Client.builder().endpoints(registryConfig.getAddress())
-                .connectTimeout(Duration.ofMillis(registryConfig.getTimeout()))
-                .build();
-        kvClient = client.getKVClient();
+
+            client = Client.builder().endpoints(registryConfig.getAddress())
+                    .connectTimeout(Duration.ofMillis(registryConfig.getTimeout()))
+                    .build();
+            kvClient = client.getKVClient();
+
+        try {
+            ByteSequence rootPath = ByteSequence.from(ETCD_ROOT_PATH, StandardCharsets.UTF_8);
+            GetResponse response = client.getKVClient().get(rootPath).get(5, TimeUnit.SECONDS);  // 设置超时为5秒
+            String kv = String.valueOf(response.getKvs());
+            System.out.println("获取根路径的内容:kv= " + kv);
+        } catch (Exception e) {
+            throw new RuntimeException("Etcd注册中心连接失败", e);
+        }
+
     }
 
     @Override
